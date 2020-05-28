@@ -1,6 +1,6 @@
 # Pop Up Tools
 
-This extension provides commonly used tools that pop up when you need them.
+This extension provides commonly used tools that pop up in the glyph editor when you need them.
 
 Tool                 | Hot Key
 ---------------------|----------
