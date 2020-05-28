@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>addToMenu</key>
+	<array>
+		<dict>
+			<key>path</key>
+			<string>menu_alignDistribute.py</string>
+			<key>preferredName</key>
+			<string>Align &amp; Distribute</string>
+			<key>shortKey</key>
+			<array>
+				<integer>262144</integer>
+				<string>a</string>
+			</array>
+		</dict>
+		<dict>
+			<key>path</key>
+			<string>menu_boolean.py</string>
+			<key>preferredName</key>
+			<string>Boolean Operations</string>
+			<key>shortKey</key>
+			<array>
+				<integer>262144</integer>
+				<string>o</string>
+			</array>
+		</dict>
+		<dict>
+			<key>path</key>
+			<string>menu_transform.py</string>
+			<key>preferredName</key>
+			<string>Transformations</string>
+			<key>shortKey</key>
+			<array>
+				<integer>262144</integer>
+				<string>t</string>
+			</array>
+		</dict>
+	</array>
+	<key>developer</key>
+	<string>Type Supply</string>
+	<key>developerURL</key>
+	<string>http://typesupply.com</string>
+	<key>html</key>
+	<false/>
+	<key>launchAtStartUp</key>
+	<false/>
+	<key>mainScript</key>
+	<string>launch.py</string>
+	<key>name</key>
+	<string>Pop Up Tools</string>
+	<key>requiresVersionMajor</key>
+	<string>3</string>
+	<key>requiresVersionMinor</key>
+	<string>3</string>
+	<key>timeStamp</key>
+	<real>1590691523.54772</real>
+	<key>version</key>
+	<string>0.1</string>
+</dict>
+</plist>
