@@ -1,7 +1,11 @@
 from fontTools.misc.arrayTools import unionRect, rectCenter
+from fontTools.pens.cocoaPen import CocoaPen
 import vanilla
+from fontParts.base import BaseBPoint, BaseContour, BaseComponent
 from .base import BaseActionWindowController, getImage
-from mojo.UI import UpdateCurrentGlyphView
+from mojo import events
+from mojo import drawingTools as bot
+from mojo.UI import UpdateCurrentGlyphView, getDefault
 from fontParts.world import CurrentGlyph
 
 
@@ -10,9 +14,13 @@ class TransformationController(BaseActionWindowController):
     def buildInterface(self, w):
         self.glyph = CurrentGlyph()
         self.selection = getSelection(self.glyph)
+        self.currentTransformation = None
+        self.previewObjects = []
+        events.addObserver(self, "drawActionPreview", "drawBackground")
 
         w.originButton = OriginButton(
-            value=None
+            value=None,
+            callback=self.updatePreview
         )
 
         value = False
@@ -57,11 +65,13 @@ class TransformationController(BaseActionWindowController):
             entry1Value="0",
             entry2PreText="y:",
             entry2Value="0",
-            callback=self.moveCallback
+            callback=self.moveCallback,
+            valueChangedCallback=self.updatePreview
         )
         w.transformLine1 = vanilla.HorizontalLine("auto")
         w.scaleGroup = ScaleGroup(
-            callback=self.scaleCallback
+            callback=self.scaleCallback,
+            valueChangedCallback=self.updatePreview
         )
         w.transformLine2 = vanilla.HorizontalLine("auto")
         bounds = self.getSelectionBounds()
@@ -75,7 +85,8 @@ class TransformationController(BaseActionWindowController):
         w.fitGroup = FitGroup(
             x=x,
             y=y,
-            callback=self.fitCallback
+            callback=self.fitCallback,
+            valueChangedCallback=self.updatePreview
         )
         w.transformLine3 = vanilla.HorizontalLine("auto")
         w.rotateGroup = TransformationGroup(
@@ -83,7 +94,8 @@ class TransformationController(BaseActionWindowController):
             entry1Value="0",
             entry1PostText="°",
             showEntry2=False,
-            callback=self.rotateCallback
+            callback=self.rotateCallback,
+            valueChangedCallback=self.updatePreview
         )
         w.transformLine4 = vanilla.HorizontalLine("auto")
         w.skewGroup = TransformationGroup(
@@ -94,7 +106,8 @@ class TransformationController(BaseActionWindowController):
             entry2PreText="y:",
             entry2Value="0",
             entry2PostText="°",
-            callback=self.skewCallback
+            callback=self.skewCallback,
+            valueChangedCallback=self.updatePreview
         )
 
         m = w.skewGroup.metrics
@@ -162,10 +175,32 @@ class TransformationController(BaseActionWindowController):
         ]
         return rules
 
-    def _action(self, actionName, methodName, **kwargs):
+    def windowCloseCallback(self, sender):
+        super(TransformationController, self).windowCloseCallback(sender)
+        events.removeObserver(self, "drawBackground")
+
+    def responderWillBecomeFirstCallback(self, responder):
+        if self.w.moveGroup.containsResponder(responder):
+            self.currentTransformation = "move"
+        elif self.w.scaleGroup.containsResponder(responder):
+            self.currentTransformation = "scale"
+        elif self.w.fitGroup.containsResponder(responder):
+            self.currentTransformation = "fit"
+        elif self.w.rotateGroup.containsResponder(responder):
+            self.currentTransformation = "rotate"
+        elif self.w.skewGroup.containsResponder(responder):
+            self.currentTransformation = "skew"
+        self.updatePreview()
+
+    # ----------------
+    # Action Callbacks
+    # ----------------
+
+    def _action(self, actionName, methodName, previewOnly, **kwargs):
         glyph = self.glyph
-        glyph.prepareUndo(actionName)
         selection = self.selection
+        if not previewOnly:
+            glyph.prepareUndo(actionName)
         objects = []
         if self.w.contoursCheckBox.get():
             objects += selection["contours"]
@@ -176,20 +211,26 @@ class TransformationController(BaseActionWindowController):
             objects += selection["anchors"]
         if self.w.guidesCheckBox.get():
             objects += selection["guidelines"]
+        if previewOnly:
+            objects = [o.copy() for o in objects]
         for obj in objects:
             m = getattr(obj, methodName)
             m(**kwargs)
-        if self.w.metricsCheckBox.get():
-            if selection["metrics"]:
-                value = kwargs["value"]
-                if methodName == "moveBy":
-                    glyph.width += value[0]
-                elif methodName == "scaleBy":
-                    v = glyph.width * value[0]
-                    glyph.width = int(round(v))
-        glyph.round() # XXX get the snap value from the prefs?
-        glyph.performUndo()
-        glyph.changed()
+        if not previewOnly:
+            if self.w.metricsCheckBox.get():
+                if selection["metrics"]:
+                    value = kwargs["value"]
+                    if methodName == "moveBy":
+                        glyph.width += value[0]
+                    elif methodName == "scaleBy":
+                        v = glyph.width * value[0]
+                        glyph.width = int(round(v))
+        if not previewOnly:
+            glyph.round() # XXX get the snap value from the prefs?
+            glyph.performUndo()
+            glyph.changed()
+        else:
+            self.previewObjects = objects
         UpdateCurrentGlyphView()
 
     def getSelectionBounds(self):
@@ -244,16 +285,18 @@ class TransformationController(BaseActionWindowController):
         y = yValues[yName]
         return (x, y)
 
-    def moveCallback(self, sender):
+    def moveCallback(self, sender, previewOnly=False):
         try:
             x, y = sender.get()
             x = int(round(x))
             y = int(round(y))
         except (ValueError, TypeError):
             return
-        self._action("Move", "moveBy", value=(x, y))
+        self._action("Move", "moveBy", previewOnly, value=(x, y))
+        if not previewOnly:
+            self.updatePreview()
 
-    def scaleCallback(self, sender):
+    def scaleCallback(self, sender, previewOnly=False):
         try:
             x, y = sender.get()
             x *= 0.01
@@ -262,10 +305,11 @@ class TransformationController(BaseActionWindowController):
         except (ValueError, TypeError):
             return
         origin = self.getOrigin()
-        print(origin)
-        self._action("Scale", "scaleBy", value=value, origin=origin)
+        self._action("Scale", "scaleBy", previewOnly, value=value, origin=origin)
+        if not previewOnly:
+            self.updatePreview()
 
-    def fitCallback(self, sender):
+    def fitCallback(self, sender, previewOnly=False):
         try:
             bounds = self.getSelectionBounds()
             if bounds is None:
@@ -281,23 +325,64 @@ class TransformationController(BaseActionWindowController):
             value = (x, y)
         except (ValueError, TypeError):
             return
-        self._action("Fit", "scaleBy", value=(x, y))
+        self._action("Fit", "scaleBy", previewOnly, value=(x, y))
+        if not previewOnly:
+            self.updatePreview()
 
-    def rotateCallback(self, sender):
+    def rotateCallback(self, sender, previewOnly=False):
         try:
             value = sender.get()[0]
         except (ValueError, TypeError):
             return
         origin = self.getOrigin()
-        self._action("Rotate", "rotateBy", value=value, origin=origin)
+        self._action("Rotate", "rotateBy", previewOnly, value=value, origin=origin)
+        if not previewOnly:
+            self.updatePreview()
 
-    def skewCallback(self, sender):
+    def skewCallback(self, sender, previewOnly=False):
         try:
             value = sender.get()
         except (ValueError, TypeError):
             return
         origin = self.getOrigin()
-        self._action("Skew", "skewBy", value=value, origin=origin)
+        self._action("Skew", "skewBy", previewOnly, value=value, origin=origin)
+        if not previewOnly:
+            self.updatePreview()
+
+    # -------
+    # Preview
+    # -------
+
+    def updatePreview(self, sender=None):
+        if self.currentTransformation == "move":
+            self.moveCallback(self.w.moveGroup, previewOnly=True)
+        elif self.currentTransformation == "scale":
+            self.scaleCallback(self.w.scaleGroup, previewOnly=True)
+        elif self.currentTransformation == "fit":
+            self.fitCallback(self.w.fitGroup, previewOnly=True)
+        elif self.currentTransformation == "rotate":
+            self.rotateCallback(self.w.rotateGroup, previewOnly=True)
+        elif self.currentTransformation == "skew":
+            self.skewCallback(self.w.skewGroup, previewOnly=True)
+
+    def drawActionPreview(self, data):
+        if not self.previewObjects:
+            return
+        pen = CocoaPen(glyphSet=self.glyph.layer)
+        for obj in self.previewObjects:
+            if isinstance(obj, BaseBPoint):
+                pass
+            elif isinstance(obj, BaseContour):
+                obj.draw(pen)
+            elif isinstance(obj, BaseComponent):
+                obj.draw(pen)
+        pixel = 1.0 / data["scale"]
+        r, g, b, a = getDefault("glyphViewEchoStrokeColor")
+        with bot.savedState():
+            bot.fill(None)
+            bot.stroke(r, g, b, a)
+            bot.strokeWidth(pixel)
+            bot.drawPath(pen.path)
 
 
 def getSelection(glyph):
@@ -356,10 +441,12 @@ class TransformationGroup(vanilla.Group):
             entry2Value=None,
             showLinkButton=False,
             linked=False,
-            callback=None
+            callback=None,
+            valueChangedCallback=None
         ):
         super(TransformationGroup, self).__init__("auto")
         self.callback = callback
+        self.valueChangedCallback = valueChangedCallback
         self.button = vanilla.Button(
             "auto",
             title,
@@ -463,11 +550,21 @@ class TransformationGroup(vanilla.Group):
         ]
         self.addAutoPosSizeRules(rules, self.metrics)
 
+    def valueChanged(self):
+        if self.valueChangedCallback is not None:
+            self.valueChangedCallback(self)
+
+    def containsResponder(self, responder):
+        if self.entry1.getNSTextField() == responder:
+            return True
+        if self.entry2.getNSTextField() == responder:
+            return True
+
     def entry1Callback(self, sender):
-        pass
+        self.valueChanged()
 
     def entry2Callback(self, sender):
-        pass
+        self.valueChanged()
 
     def linkedButtonCallback(self, sender):
         self.linked = not self.linked
@@ -494,7 +591,7 @@ class TransformationGroup(vanilla.Group):
 
 class ScaleGroup(TransformationGroup):
 
-    def __init__(self, callback=None):
+    def __init__(self, callback=None, valueChangedCallback=None):
         super(ScaleGroup, self).__init__(
             "Scale",
             entry1PreText="x:",
@@ -505,17 +602,19 @@ class ScaleGroup(TransformationGroup):
             entry2PostText="%",
             showLinkButton=True,
             linked=True,
-            callback=callback
+            callback=callback,
+            valueChangedCallback=valueChangedCallback
         )
 
     def linkedButtonCallback(self, sender):
         super(ScaleGroup, self).linkedButtonCallback(sender)
         self.entry2.enable(not self.linked)
+        self.valueChanged()
 
 
 class FitGroup(TransformationGroup):
 
-    def __init__(self, x, y, callback=None):
+    def __init__(self, x, y, callback=None, valueChangedCallback=None):
         self._x = x
         self._y = y
         super(FitGroup, self).__init__(
@@ -526,13 +625,15 @@ class FitGroup(TransformationGroup):
             entry2Value=str(y),
             showLinkButton=True,
             linked=True,
-            callback=callback
+            callback=callback,
+            valueChangedCallback=valueChangedCallback
         )
 
     def linkedButtonCallback(self, sender):
         super(FitGroup, self).linkedButtonCallback(sender)
         if self.linked:
             self.entry1Callback(self.entry1)
+        self.valueChanged()
 
     def entry1Callback(self, sender):
         if not self.linked:
@@ -545,6 +646,7 @@ class FitGroup(TransformationGroup):
         scale = size / self._x
         y = int(round(self._y * scale))
         self.entry2.set(str(y))
+        self.valueChanged()
 
     def entry2Callback(self, sender):
         if not self.linked:
@@ -557,6 +659,7 @@ class FitGroup(TransformationGroup):
         scale = size / self._y
         x = int(round(self._x * scale))
         self.entry1.set(str(x))
+        self.valueChanged()
 
 
 # --------------
@@ -565,7 +668,8 @@ class FitGroup(TransformationGroup):
 
 class OriginButton(vanilla.Group):
 
-    def __init__(self, value):
+    def __init__(self, value, callback):
+        self.callback = callback
         super(OriginButton, self).__init__("auto")
 
         self.value = value
@@ -677,6 +781,8 @@ class OriginButton(vanilla.Group):
             value = None
         self.value = value
         self.updateIcon()
+        if self.callback is not None:
+            self.callback(self)
 
     def get(self):
         values = {

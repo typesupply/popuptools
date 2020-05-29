@@ -20,6 +20,7 @@ def getImage(name):
         imageCache[name] = image
     return imageCache[name]
 
+
 # ---------------
 # Base Controller
 # ---------------
@@ -30,10 +31,11 @@ class BaseActionWindowController(object):
         glyphWindow = CurrentGlyphWindow()
         if glyphWindow is None:
             return
-        self.w = StatusInteractivePopUpWindow(
+        self.w = ActionWindow(
             (1, 1),
             centerInView=CurrentGlyphWindow().getGlyphView()
         )
+        self.w.responderWillBecomeFirstCallback = self.responderWillBecomeFirstCallback
         # There is probably a better way to set
         # the escape key to close the window but
         # I am lazy so I'm using a hidden button.
@@ -54,14 +56,44 @@ class BaseActionWindowController(object):
         rules = self.buildInterface(self.w)
         if rules is not None:
             self.w.addAutoPosSizeRules(rules, self.metrics)
+        # Bind close.
+        self.w.bind("close", self.windowCloseCallback)
         # Go
         self.w.open()
 
     def _closeButtonCallback(self, sender):
+        self.w.responderWillBecomeFirstCallback = None
         self.w.close()
 
     def buildInterface(self):
         pass
+
+    def windowCloseCallback(self, sender):
+        pass
+
+    def responderWillBecomeFirstCallback(self, responder):
+        pass
+
+# ------
+# Window
+# ------
+
+
+class TSActionNSWindow(StatusInteractivePopUpWindow.nsWindowClass):
+
+    def makeFirstResponder_(self, responder):
+        value = super(TSActionNSWindow, self).makeFirstResponder_(responder)
+        if value:
+            delegate = self.delegate()
+            if delegate is not None and delegate.responderWillBecomeFirstCallback is not None:
+                delegate.responderWillBecomeFirstCallback(responder)
+        return responder
+
+
+class ActionWindow(StatusInteractivePopUpWindow):
+
+    nsWindowClass = TSActionNSWindow
+
 
 
 # -------------
