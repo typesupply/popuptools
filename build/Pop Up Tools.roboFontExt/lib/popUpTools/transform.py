@@ -232,6 +232,8 @@ class TransformationController(BaseActionWindowController):
         else:
             self.previewObjects = objects
         UpdateCurrentGlyphView()
+        if not previewOnly:
+            self.w.close()
 
     def getSelectionBounds(self):
         selection = self.selection
