@@ -663,6 +663,10 @@ class FitGroup(TransformationGroup):
         self.entry1.set(str(x))
         self.valueChanged()
 
+    def get(self):
+        value1 = float(self.entry1.get())
+        value2 = float(self.entry2.get())
+        return value1, value2
 
 # --------------
 # Origin Control
