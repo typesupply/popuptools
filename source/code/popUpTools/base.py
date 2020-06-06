@@ -124,4 +124,5 @@ class IconButton(vanilla.ImageButton):
             glyph.changed()
             UpdateCurrentGlyphView()
         if self.closesWindow:
-            pass
+            window = self.getNSButton().window().delegate()
+            window.close()
