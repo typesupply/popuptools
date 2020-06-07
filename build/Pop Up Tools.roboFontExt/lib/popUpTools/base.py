@@ -1,5 +1,5 @@
 import os
-from AppKit import NSImage
+from AppKit import NSApp, NSImage
 import vanilla
 from mojo.UI import CurrentGlyphWindow, UpdateCurrentGlyphView,\
     StatusInteractivePopUpWindow
@@ -20,6 +20,20 @@ def getImage(name):
         imageCache[name] = image
     return imageCache[name]
 
+def getActiveGlyphWindow():
+    window = CurrentGlyphWindow()
+    # there is no glyph window
+    if window is None:
+        return None
+    # the glyph window is not the current window
+    if window.w.getNSWindow() != NSApp().orderedWindows()[0]:
+        return None
+    # the glyph editor is not the first responder
+    firstResponder = window.w.getNSWindow().firstResponder()
+    if firstResponder != window.editGlyphView:
+        return None
+    return window
+
 
 # ---------------
 # Base Controller
@@ -28,7 +42,7 @@ def getImage(name):
 class BaseActionWindowController(object):
 
     def __init__(self):
-        glyphWindow = CurrentGlyphWindow()
+        glyphWindow = getActiveGlyphWindow()
         if glyphWindow is None:
             return
         self.w = ActionWindow(
