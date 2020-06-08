@@ -25,12 +25,8 @@ def getActiveGlyphWindow():
     # there is no glyph window
     if window is None:
         return None
-    # the glyph window is not the current window
-    if window.w.getNSWindow() != NSApp().orderedWindows()[0]:
-        return None
-    # the glyph editor is not the first responder
-    firstResponder = window.w.getNSWindow().firstResponder()
-    if firstResponder != window.editGlyphView:
+    # the editor is not the first responder
+    if not window.getGlyphView().isFirstResponder():
         return None
     return window
 
