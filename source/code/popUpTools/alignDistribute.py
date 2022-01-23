@@ -96,6 +96,42 @@ class AlignDistributeController(BaseActionWindowController):
 
         self.w.line2 = vanilla.HorizontalLine("auto")
 
+        # Align To Metrics
+
+        w.alignAscenderButton = IconButton(
+            imageName="icon-align-ascender",
+            actionName="Align to Ascender",
+            actionCallback=self.alignAscenderCallback
+        )
+        w.alignCapHeightButton = IconButton(
+            imageName="icon-align-cap-height",
+            actionName="Align to Cap Height",
+            actionCallback=self.alignCapHeightCallback
+        )
+        w.alignXHeightButton = IconButton(
+            imageName="icon-align-x-height",
+            actionName="Align to x-Height",
+            actionCallback=self.alignXHeightCallback
+        )
+
+        w.alignBaselineButton = IconButton(
+            imageName="icon-align-baseline",
+            actionName="Align to Baseline",
+            actionCallback=self.alignBaselineCallback
+        )
+        w.alignDescenderButton = IconButton(
+            imageName="icon-align-descender",
+            actionName="Align to Descender",
+            actionCallback=self.alignDescenderCallback
+        )
+        w.centerOnWidthButton = IconButton(
+            imageName="icon-center-on-width",
+            actionName="Center on Width",
+            actionCallback=self.centerOnWidthCallback
+        )
+
+        self.w.line3 = vanilla.HorizontalLine("auto")
+
         # Distribute Vertical
 
         w.distributeVerticalSpacingButton = IconButton(
@@ -189,6 +225,20 @@ class AlignDistributeController(BaseActionWindowController):
             "H:|-margin-[line2]-margin-|",
 
             "H:|-margin-"
+                "[alignAscenderButton(==iconButtonWidth)]"
+                "[alignCapHeightButton(==iconButtonWidth)]"
+                "[alignXHeightButton(==iconButtonWidth)]"
+                "-margin-|",
+
+            "H:|-margin-"
+                "[alignBaselineButton(==iconButtonWidth)]"
+                "[alignDescenderButton(==iconButtonWidth)]"
+                "[centerOnWidthButton(==iconButtonWidth)]"
+                "-margin-|",
+
+            "H:|-margin-[line3]-margin-|",
+
+            "H:|-margin-"
                 "[distributeVerticalSpacingButton(==iconButtonWidth)]"
                 "[distributeHorizontalSpacingButton(==iconButtonWidth)]"
                 "[distributeRandomSpacingButton(==iconButtonWidth)]"
@@ -250,19 +300,39 @@ class AlignDistributeController(BaseActionWindowController):
 
             "V:[line2]"
                 "-iconPadding-"
+                "[alignAscenderButton(==iconButtonHeight)]"
+                "[alignBaselineButton(==iconButtonHeight)]"
+                "-iconPadding-[line3]",
+
+            "V:[line2]"
+                "-iconPadding-"
+                "[alignCapHeightButton(==iconButtonHeight)]"
+                "[alignDescenderButton(==iconButtonHeight)]"
+                "-iconPadding-[line3]",
+
+            "V:[line2]"
+                "-iconPadding-"
+                "[alignXHeightButton(==iconButtonHeight)]"
+                "[centerOnWidthButton(==iconButtonHeight)]"
+                "-iconPadding-[line3]",
+
+            "V:[line3]",
+
+            "V:[line3]"
+                "-iconPadding-"
                 "[distributeVerticalSpacingButton(==iconButtonHeight)]"
                 "[distributeTopsButton(==iconButtonHeight)]"
                 "[distributeLeftsButton(==iconButtonHeight)]"
                 "-margin-|",
 
-            "V:[line2]"
+            "V:[line3]"
                 "-iconPadding-"
                 "[distributeHorizontalSpacingButton(==iconButtonHeight)]"
                 "[distributeYCentersButton(==iconButtonHeight)]"
                 "[distributeXCentersButton(==iconButtonHeight)]"
                 "-margin-|",
 
-            "V:[line2]"
+            "V:[line3]"
                 "-iconPadding-"
                 "[distributeRandomSpacingButton(==iconButtonHeight)]"
                 "[distributeBottomsButton(==iconButtonHeight)]"
@@ -326,8 +396,6 @@ class AlignDistributeController(BaseActionWindowController):
     def alignBottomRightCallback(self, glyph):
         self._align(glyph, [self._alignBottom, self._alignRight])
 
-    # Guts
-
     def _align(self, glyph, methods):
         rects, selectedContours, selectedBPoints = getSelection(glyph)
         if len(rects) < 2:
@@ -343,19 +411,19 @@ class AlignDistributeController(BaseActionWindowController):
         top = getEdgeCoordinate(rects, 3, max)
         for bPoint in selectedBPoints:
             d = top - bPoint.anchor[1]
-            bPoint.move((0, d))
+            bPoint.moveBy((0, d))
         for contour in selectedContours:
             d = top - contour.bounds[3]
-            contour.move((0, d))
+            contour.moveBy((0, d))
 
     def _alignBottom(self, rects, selectedContours, selectedBPoints):
         bottom = getEdgeCoordinate(rects, 1, min)
         for bPoint in selectedBPoints:
             d = bottom - bPoint.anchor[1]
-            bPoint.move((0, d))
+            bPoint.moveBy((0, d))
         for contour in selectedContours:
             d = bottom - contour.bounds[1]
-            contour.move((0, d))
+            contour.moveBy((0, d))
 
     def _alignYCenter(self, rects, selectedContours, selectedBPoints):
         y1 = getEdgeCoordinate(rects, 1, min)
@@ -363,28 +431,28 @@ class AlignDistributeController(BaseActionWindowController):
         center = (y1 + y2) / 2
         for bPoint in selectedBPoints:
             d = center - bPoint.anchor[1]
-            bPoint.move((0, d))
+            bPoint.moveBy((0, d))
         for contour in selectedContours:
             d = center - rectCenter(contour.bounds)[1]
-            contour.move((0, d))
+            contour.moveBy((0, d))
 
     def _alignLeft(self, rects, selectedContours, selectedBPoints):
         left = getEdgeCoordinate(rects, 0, min)
         for bPoint in selectedBPoints:
             d = left - bPoint.anchor[0]
-            bPoint.move((d, 0))
+            bPoint.moveBy((d, 0))
         for contour in selectedContours:
             d = left - contour.bounds[0]
-            contour.move((d, 0))
+            contour.moveBy((d, 0))
 
     def _alignRight(self, rects, selectedContours, selectedBPoints):
         right = getEdgeCoordinate(rects, 2, max)
         for bPoint in selectedBPoints:
             d = right - bPoint.anchor[0]
-            bPoint.move((d, 0))
+            bPoint.moveBy((d, 0))
         for contour in selectedContours:
             d = right - contour.bounds[2]
-            contour.move((d, 0))
+            contour.moveBy((d, 0))
 
     def _alignXCenter(self, rects, selectedContours, selectedBPoints):
         x1 = getEdgeCoordinate(rects, 0, min)
@@ -392,10 +460,62 @@ class AlignDistributeController(BaseActionWindowController):
         center = (x1 + x2) / 2
         for bPoint in selectedBPoints:
             d = center - bPoint.anchor[0]
-            bPoint.move((d, 0))
+            bPoint.moveBy((d, 0))
         for contour in selectedContours:
             d = center - rectCenter(contour.bounds)[0]
-            contour.move((d, 0))
+            contour.moveBy((d, 0))
+
+    # Metrics
+
+    def alignAscenderCallback(self, glyph):
+        self._alignToMetric(glyph, glyph.font.info.ascender)
+
+    def alignCapHeightCallback(self, glyph):
+        self._alignToMetric(glyph, glyph.font.info.capHeight)
+
+    def alignXHeightCallback(self, glyph):
+        self._alignToMetric(glyph, glyph.font.info.xHeight)
+
+    def alignBaselineCallback(self, glyph):
+        self._alignToMetric(glyph, 0)
+
+    def alignDescenderCallback(self, glyph):
+        self._alignToMetric(glyph, glyph.font.info.descender)
+
+    def centerOnWidthCallback(self, glyph):
+        rects, selectedContours, selectedBPoints = getSelection(glyph)
+        left = getEdgeCoordinate(rects, 0, min)
+        right = getEdgeCoordinate(rects, 2, max)
+        selectionWidth = right - left
+        glyphWidth = glyph.width
+        diff = glyphWidth - selectionWidth
+        margin = int(round(diff / 2))
+        offset = margin - left
+        for bPoint in selectedBPoints:
+            bPoint.moveBy((offset, 0))
+        for contour in selectedContours:
+            contour.moveBy((offset, 0))
+
+    def _alignToMetric(self, glyph, metric):
+        rects, selectedContours, selectedBPoints = getSelection(glyph)
+        top = getEdgeCoordinate(rects, 3, max)
+        bottom = getEdgeCoordinate(rects, 1, min)
+        topDiff = abs(top - metric)
+        bottomDiff = abs(metric - bottom)
+        move = 0
+        if top > metric and bottom < metric:
+            if topDiff < bottomDiff:
+                move = -topDiff
+            else:
+                move = bottomDiff
+        elif top < metric:
+            move = topDiff
+        elif bottom > metric:
+            move = -bottomDiff
+        for bPoint in selectedBPoints:
+            bPoint.moveBy((0, move))
+        for contour in selectedContours:
+            contour.moveBy((0, move))
 
     # ----------
     # Distribute
@@ -478,9 +598,9 @@ class AlignDistributeController(BaseActionWindowController):
                 e = edge1 + (i * interval)
                 d = e - pos
                 if index in (0, 2):
-                    obj.move((d, 0))
+                    obj.moveBy((d, 0))
                 else:
-                    obj.move((0, d))
+                    obj.moveBy((0, d))
 
     def _distributeCenter(self, index, rects, selectedContours, selectedBPoints):
         ordered = [(bPoint.anchor[index], (bPoint.anchor[0], bPoint.anchor[1], bPoint.anchor[0], bPoint.anchor[1]), bPoint) for bPoint in selectedBPoints]
@@ -499,9 +619,9 @@ class AlignDistributeController(BaseActionWindowController):
             alignTo = prev + step
             d = alignTo - rectCenter(bounds)[index]
             if index == 0:
-                obj.move((d, 0))
+                obj.moveBy((d, 0))
             else:
-                obj.move((0, d))
+                obj.moveBy((0, d))
             prev = alignTo
 
     def _distributeSpacing(self, glyph, index):
@@ -545,9 +665,9 @@ class AlignDistributeController(BaseActionWindowController):
             d = newPos - pos
             if d != 0:
                 if index == 0:
-                    obj.move((d, 0))
+                    obj.moveBy((d, 0))
                 else:
-                    obj.move((0, d))
+                    obj.moveBy((0, d))
             prevEdge = newPos + size
         for bPoint in selectedBPoints:
             bPoint.round()
@@ -572,6 +692,10 @@ def getSelection(glyph):
                     x, y = bPoint.anchor
                     rects.append((x, y, x, y))
                     selectedBPoints.append(bPoint)
+    if not selectedContours and not selectedBPoints:
+        for contour in glyph:
+            rects.append(contour.bounds)
+            selectedContours.append(contour)
     return rects, selectedContours, selectedBPoints
 
 def getEdgeCoordinate(rects, index, func):
